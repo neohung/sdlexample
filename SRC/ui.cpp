@@ -292,3 +292,48 @@ void console_put_string_in_rect(Console *con, char *string,
     }
 }
 
+void view_draw_rect(Console *console, UIRect *rect, u32 color, 
+               i32 borderWidth, u32 borderColor)
+{
+    for (i32 y = rect->y; y < rect->y + rect->h; y++) {
+        for (i32 x = rect->x; x < rect->x + rect->w; x++) {
+            char c = ' ';
+            // If we have a border, then go down that rabbit hole
+            if (borderWidth > 0) {               
+                // Sides
+                if ((x == rect->x) || (x == rect->x + rect->w - 1)) {
+                    c = (borderWidth == 1) ? 179 : 186;
+                }
+
+                // Top
+                if (y == rect->y) {
+                    if (x == rect->x) {
+                        // Top left corner
+                        c = (borderWidth == 1) ? 218 : 201;
+                    } else if (x == rect->x + rect->w - 1) {
+                        // Top right corner
+                        c = (borderWidth == 1) ? 191 : 187;
+                    } else {
+                        // Top border
+                        c = (borderWidth == 1) ? 196 : 205;
+                    }
+                }
+                
+                // Bottom
+                if (y == rect->y + rect->h - 1) {
+                    if (x == rect->x) {
+                        // Bottom left corner
+                        c = (borderWidth == 1) ? 192 : 200;
+                    } else if (x == rect->x + rect->w - 1) {
+                        // Bottom right corner
+                        c = (borderWidth == 1) ? 217 : 188;
+                    } else {
+                        // Bottom border
+                        c = (borderWidth == 1) ? 196 : 205;
+                    }
+                }
+            }
+            console_put_char_at(console, c, x, y, borderColor, color);
+        }
+    }
+}

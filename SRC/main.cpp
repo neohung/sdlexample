@@ -72,7 +72,7 @@ void quit_game() {
 void render_menu_view(Console *console) 
 {
     UIRect rect = {0, 0, MENU_WIDTH, MENU_HEIGHT};
-    //view_draw_rect(console, &rect, 0x363247FF, 0, 0xFFFFFFFF);
+    view_draw_rect(console, &rect, 0x363247FF, 0, 0xFFFFFFFF);
     console_put_string_at(console, "Start a (N)ew game", 2, 3, 0xbca285FF, 0x00000000);
     console_put_string_at(console, "View (H)all of Fame", 2, 6, 0xbca285FF, 0x00000000);
 }
