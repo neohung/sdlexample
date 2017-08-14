@@ -72,7 +72,7 @@ UIScreen *screen_test(void)
 {
 	//
 	List *testViews = list_new(NULL);
-	UIRect menuRect = {(16 * MENU_LEFT), (16 * MENU_TOP), (16 * MENU_WIDTH), (16 * MENU_HEIGHT)};
+	//UIRect menuRect = {(16 * MENU_LEFT), (16 * MENU_TOP), (16 * MENU_WIDTH), (16 * MENU_HEIGHT)};
 	//UIView *menuView = view_new(menuRect, MENU_WIDTH, MENU_HEIGHT,"./terminal16x16.png", 0, render_menu_view);
 	//list_insert_after(testViews, NULL, menuView);
 

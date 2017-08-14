@@ -3,7 +3,7 @@
 */
 
 #include "ui.h"
-#include "stb_image.h"
+//#include "stb_image.h"
 
 UIScreen *activeScreen = NULL;
 bool asciiMode = true;
@@ -59,9 +59,10 @@ bool system_is_little_endian() {
 void console_set_bitmap_font(Console *con, char *filename,
                              asciiChar firstCharInAtlas,
                              i32 charWidth, i32 charHeight) {
+    
     // Load the image data
     int imgWidth, imgHeight, numComponents;
-    unsigned char *imgData = stbi_load(filename,&imgWidth, &imgHeight,&numComponents, STBI_rgb_alpha);
+    //unsigned char *imgData = stbi_load(filename,&imgWidth, &imgHeight,&numComponents, STBI_rgb_alpha);
 
     // Copy the image data so we can hold onto it
     u32 imgDataSize = imgWidth * imgHeight * sizeof(u32);
@@ -99,6 +100,8 @@ void console_set_bitmap_font(Console *con, char *filename,
         free(con->font);
     }
     con->font = font;
+    
+
 }
 
 UIView *view_new(UIRect pixelRect, u32 cellCountX, u32 cellCountY, char *fontFile, asciiChar firstCharInAtlas, UIRenderFunction renderFn) {
