@@ -91,5 +91,8 @@ struct UIScreen{
 void ui_set_active_screen(UIScreen *screen);
 UIScreen *ui_get_active_screen(void);
 void console_clear(Console *con);
+UIView *view_new(UIRect pixelRect, u32 cellCountX, u32 cellCountY, char *fontFile, asciiChar firstCharInAtlas, UIRenderFunction renderFn);
+void console_put_string_at(Console *con, char *string, i32 x, i32 y, u32 fgColor, u32 bgColor);
+void console_put_string_in_rect(Console *con, char *string, UIRect rect, bool wrap, u32 fgColor, u32 bgColor);
 
 #endif

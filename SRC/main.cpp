@@ -27,8 +27,8 @@ typedef int64_t		i64;
 #define global_variable static
 #define internal static
 #define FPS_LIMIT		20
-#define SCREEN_WIDTH	320 //1280
-#define SCREEN_HEIGHT	240 //720
+#define SCREEN_WIDTH	1280 //320 //1280
+#define SCREEN_HEIGHT	720 //240 //720
 
 //Render the Screen from UIScreen
 internal void render_screen(SDL_Renderer *renderer, SDL_Texture *screenTexture, UIScreen *screen)
@@ -43,15 +43,15 @@ internal void render_screen(SDL_Renderer *renderer, SDL_Texture *screenTexture, 
         return;
     }
     ListElement *e = list_head(screen->views);
-	printf("head=%p\n",e);
+	//printf("head=%p\n",e);
     while (e != NULL) {
-    	//UIView *v = (UIView *)list_data(e);
-    	//console_clear(v->console);
-    	//SDL_UpdateTexture(screenTexture, v->pixelRect, v->console->pixels, v->pixelRect->w * sizeof(u32));
+    	UIView *v = (UIView *)list_data(e);
+    	console_clear(v->console);
+    	SDL_UpdateTexture(screenTexture, v->pixelRect, v->console->pixels, v->pixelRect->w * sizeof(u32));
     	e = list_next(e);
     	//SDL_Delay(1000);
     }
-	printf("tail=%p\n",e);
+	//printf("tail=%p\n",e);
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
 	SDL_RenderPresent(renderer);
@@ -68,14 +68,22 @@ void quit_game() {
 #define MENU_TOP	28
 #define MENU_WIDTH	24
 #define MENU_HEIGHT	10
+
+void render_menu_view(Console *console) 
+{
+    UIRect rect = {0, 0, MENU_WIDTH, MENU_HEIGHT};
+    //view_draw_rect(console, &rect, 0x363247FF, 0, 0xFFFFFFFF);
+    console_put_string_at(console, "Start a (N)ew game", 2, 3, 0xbca285FF, 0x00000000);
+    console_put_string_at(console, "View (H)all of Fame", 2, 6, 0xbca285FF, 0x00000000);
+}
+
 UIScreen *screen_test(void)
 {
 	//
 	List *testViews = list_new(NULL);
-	//UIRect menuRect = {(16 * MENU_LEFT), (16 * MENU_TOP), (16 * MENU_WIDTH), (16 * MENU_HEIGHT)};
-	//UIView *menuView = view_new(menuRect, MENU_WIDTH, MENU_HEIGHT,"./terminal16x16.png", 0, render_menu_view);
-	//list_insert_after(testViews, NULL, menuView);
-
+	UIRect menuRect = {(16 * MENU_LEFT), (16 * MENU_TOP), (16 * MENU_WIDTH), (16 * MENU_HEIGHT)};
+	UIView *menuView = view_new(menuRect, MENU_WIDTH, MENU_HEIGHT,"./terminal16x16.png", 0, render_menu_view);
+	list_insert_after(testViews, NULL, menuView);
 	UIScreen *testScreen = (UIScreen *)malloc(sizeof(UIScreen));
 	testScreen->views = testViews;
 	return testScreen;
