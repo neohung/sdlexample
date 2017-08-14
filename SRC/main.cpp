@@ -30,7 +30,6 @@ typedef int64_t		i64;
 #define SCREEN_WIDTH	320 //1280
 #define SCREEN_HEIGHT	240 //720
 
-
 //Render the Screen from UIScreen
 internal void render_screen(SDL_Renderer *renderer, SDL_Texture *screenTexture, UIScreen *screen)
 {
@@ -65,12 +64,17 @@ void quit_game() {
 }
 
 // test
+#define MENU_LEFT	50
+#define MENU_TOP	28
+#define MENU_WIDTH	24
+#define MENU_HEIGHT	10
 UIScreen *screen_test(void)
 {
 	//
 	List *testViews = list_new(NULL);
-	int a;
-	//list_insert_after(testViews, NULL, &a);
+	UIRect menuRect = {(16 * MENU_LEFT), (16 * MENU_TOP), (16 * MENU_WIDTH), (16 * MENU_HEIGHT)};
+	//UIView *menuView = view_new(menuRect, MENU_WIDTH, MENU_HEIGHT,"./terminal16x16.png", 0, render_menu_view);
+	//list_insert_after(testViews, NULL, menuView);
 
 	UIScreen *testScreen = (UIScreen *)malloc(sizeof(UIScreen));
 	testScreen->views = testViews;
