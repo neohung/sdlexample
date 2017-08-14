@@ -27,7 +27,7 @@ typedef int64_t		i64;
 #define global_variable static
 #define internal static
 #define FPS_LIMIT		20
-#define SCREEN_WIDTH	1280 //320 //1280
+#define SCREEN_WIDTH	640 //320 //1280
 #define SCREEN_HEIGHT	720 //240 //720
 
 //Render the Screen from UIScreen
@@ -47,6 +47,7 @@ internal void render_screen(SDL_Renderer *renderer, SDL_Texture *screenTexture, 
     while (e != NULL) {
     	UIView *v = (UIView *)list_data(e);
     	console_clear(v->console);
+        v->render(v->console);
     	SDL_UpdateTexture(screenTexture, v->pixelRect, v->console->pixels, v->pixelRect->w * sizeof(u32));
     	e = list_next(e);
     	//SDL_Delay(1000);
@@ -64,6 +65,9 @@ void quit_game() {
 }
 
 // test
+#define BG_WIDTH    80
+#define BG_HEIGHT   45
+
 #define MENU_LEFT	50
 #define MENU_TOP	28
 #define MENU_WIDTH	24
@@ -77,6 +81,27 @@ void render_menu_view(Console *console)
     console_put_string_at(console, "View (H)all of Fame", 2, 6, 0xbca285FF, 0x00000000);
 }
 
+void render_bg_view(Console *console)  
+{
+    /*
+    // We should load and process the bg image only once, not on each render
+    BitmapImage *bgImage = NULL;
+    AsciiImage *aiImage = NULL;
+    if (bgImage == NULL) {
+        bgImage = image_load_from_file("./launch.png");
+        aiImage = asciify_bitmap(console, bgImage); 
+    }
+
+    if (asciiMode) {
+        view_draw_ascii_image_at(console, aiImage, 0, 0);
+    } else {
+        view_draw_image_at(console, bgImage, 0, 0); 
+    }
+    */
+    //console_put_string_at(console, "Dark Caverns", 52, 18, 0x556d76FF, 0x00000000);
+
+}
+
 UIScreen *screen_test(void)
 {
 	//
@@ -84,8 +109,15 @@ UIScreen *screen_test(void)
 	UIRect menuRect = {(16 * MENU_LEFT), (16 * MENU_TOP), (16 * MENU_WIDTH), (16 * MENU_HEIGHT)};
 	UIView *menuView = view_new(menuRect, MENU_WIDTH, MENU_HEIGHT,"./terminal16x16.png", 0, render_menu_view);
 	list_insert_after(testViews, NULL, menuView);
+
+    //UIRect bgRect = {0, 0, (16 * BG_WIDTH), (16 * BG_HEIGHT)};
+    //UIView *bgView = view_new(bgRect, BG_WIDTH, BG_HEIGHT, "./terminal16x16.png", 0, render_bg_view);
+    //list_insert_after(testViews, NULL, bgView);
+
 	UIScreen *testScreen = (UIScreen *)malloc(sizeof(UIScreen));
 	testScreen->views = testViews;
+    testScreen->activeView = menuView;
+    //testScreen->handle_event = handle_event_launch;
 	return testScreen;
 }
 //
