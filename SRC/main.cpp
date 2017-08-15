@@ -118,7 +118,7 @@ void handle_event_launch(UIScreen *activeScreen, UIEvent event)
 		switch (key) {
 			case SDLK_n: {
 				// Start a new game and transition to in-game screen
-				//game_new();
+				game_new();
 				ui_set_active_screen(screen_show_in_game());
 				//currentlyInGame = true;
 				}

@@ -11,6 +11,8 @@
 #define LAYER_AIR		3
 #define LAYER_TOP		4
 //======================================
+#define MAX_GO 10000
+
 #define MONSTER_TYPE_COUNT	100
 #define ITEM_TYPE_COUNT		100
 #define MAX_DUNGEON_LEVEL	20
@@ -133,8 +135,13 @@ typedef struct {
 	u32 fgColor;
 } Message;
 
+static GameObject gameObjects[MAX_GO];
+static GameObject *player = NULL;
+static List *visibilityComps;
+static List *positionComps;
 
-List *visibilityComps;
+static	i32 currentLevelNumber;
+static DungeonLevel *currentLevel;
 
 void game_new();
 

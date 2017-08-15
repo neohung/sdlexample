@@ -12,10 +12,10 @@ void render_game_map_view(Console *console)
 			}
 		}
 
-		ListElement *e = list_head(visibilityComps);
-		while (e != NULL) {
-			e = list_next(e);
-		}
+		//ListElement *e = list_head(visibilityComps);
+		//while (e != NULL) {
+		//	e = list_next(e);
+		//}
 }
 
 void handle_event_in_game(UIScreen *activeScreen, UIEvent event)
