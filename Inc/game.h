@@ -139,9 +139,24 @@ static GameObject gameObjects[MAX_GO];
 static GameObject *player = NULL;
 static List *visibilityComps;
 static List *positionComps;
+static List *physicalComps;
+static List *movementComps;
+static List *healthComps;
+static List *combatComps;
+static List *equipmentComps;
+static List *treasureComps;
+
+static List *carriedItems;
+
+static i32 maxMonsters[MAX_DUNGEON_LEVEL];
+static i32 maxItems[MAX_DUNGEON_LEVEL];
 
 static	i32 currentLevelNumber;
 static DungeonLevel *currentLevel;
+
+static u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
+static i32 (*targetMap)[MAP_HEIGHT] = NULL;
+static List *goPositions[MAP_WIDTH][MAP_HEIGHT];
 
 void game_new();
 
