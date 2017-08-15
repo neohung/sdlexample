@@ -1,0 +1,10 @@
+[RECORD]
+date=7/8/2017
+gems=2
+level=1
+name=Argew Goldbringer
+[RECORD]
+name=Benerth Swordslinger
+gems=1
+level=1
+date=7/8/2017

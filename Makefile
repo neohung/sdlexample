@@ -1,7 +1,7 @@
 
 # Sources
 
-SRCS = list.cpp ui.cpp main.cpp 
+SRCS = list.cpp ui.cpp main.cpp config.cpp game.cpp
 
 ###################################################
 
