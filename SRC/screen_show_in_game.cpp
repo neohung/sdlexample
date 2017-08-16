@@ -12,10 +12,18 @@ void render_game_map_view(Console *console)
 			}
 		}
 
-		//ListElement *e = list_head(visibilityComps);
+		ListElement *e = list_head(visibilityComps);
+		printf("render_game_map_view: %p\n",visibilityComps);
+		//Visibility *vis = (Visibility *)list_data(e);
+		//printf("render_game_map_view: %d, [%c]",vis->objectId, vis->glyph);
 		//while (e != NULL) {
+			//Visibility *vis = (Visibility *)list_data(e);
+
+			//Position *p = (Position *)game_object_get_component(&gameObjects[vis->objectId], COMP_POSITION);
+			//printf("p%d, %d, %d, %d\n",p->objectId,p->layer,p->x,p->y);
 		//	e = list_next(e);
 		//}
+
 }
 
 void handle_event_in_game(UIScreen *activeScreen, UIEvent event)
@@ -43,7 +51,7 @@ UIScreen *screen_show_in_game()
 	List *igViews = list_new(NULL);
 
 	UIRect mapRect = {0, 0, (16 * MAP_WIDTH), (16 * MAP_HEIGHT)};
-	UIView *mapView = view_new(mapRect, MAP_WIDTH, MAP_HEIGHT,"./terminal16x16.png", 0, render_game_map_view);
+	UIView *mapView = view_new(mapRect, MAP_WIDTH, MAP_HEIGHT,(char*)"./terminal16x16.png", 0, render_game_map_view);
 	list_insert_after(igViews, NULL, mapView);
 
 	//UIRect statsRect = {0, (16 * MAP_HEIGHT), (16 * STATS_WIDTH), (16 * STATS_HEIGHT)};

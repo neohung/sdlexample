@@ -11,10 +11,10 @@ void render_ranking_entries(Console *console) {
 	while (e != NULL) {
 		ConfigEntity *entity = (ConfigEntity *)e->data;
 
-		char *name = config_entity_value(entity, "name");
-		char *level = config_entity_value(entity, "level");
-		char *gems = config_entity_value(entity, "gems");
-		char *date = config_entity_value(entity, "date");
+		char *name = config_entity_value(entity, (char*)"name");
+		char *level = config_entity_value(entity, (char*)"level");
+		char *gems = config_entity_value(entity, (char*)"gems");
+		char *date = config_entity_value(entity, (char*)"date");
 
 		char *nameString = String_Create("%20s", name);
 		console_put_string_at(console, nameString, 16, y, 0xe2f442ff, 0x00000000);
@@ -42,7 +42,7 @@ void render_ranking_bg_view(Console *console)
 	BitmapImage *bgImage = NULL;
 	AsciiImage *aiImage = NULL;
 	if (bgImage == NULL) {
-		bgImage = image_load_from_file("./launch.png");
+		bgImage = image_load_from_file((char*)"./launch.png");
 		aiImage = asciify_bitmap(console, bgImage);
 	}
 
@@ -55,12 +55,12 @@ void render_ranking_bg_view(Console *console)
 	UIRect rect = {10, 5, 60, 34};
 	view_draw_rect(console, &rect, 0x363247dd, 2, 0xaad700ff);
 
-	console_put_string_at(console, "-== Ranking ==-", 28, 7, 0xaad700ff, 0x00000000);
+	console_put_string_at(console, (char*)"-== Ranking ==-", 28, 7, 0xaad700ff, 0x00000000);
 
 	render_ranking_entries(console);
 
-    console_put_string_at(console, "-== TEST MSG ==-", 31, 32, 0xaad700ff, 0x00000000);
-	console_put_string_at(console, "This is a test Message, test the message to show", 15, 34, 0xffffffff, 0x00000000);
+    console_put_string_at(console, (char*)"-== TEST MSG ==-", 31, 32, 0xaad700ff, 0x00000000);
+	console_put_string_at(console, (char*)"This is a test Message, test the message to show", 15, 34, 0xffffffff, 0x00000000);
 
 }
 
@@ -87,10 +87,10 @@ UIScreen *screen_show_ranking()
 	List *views = list_new(NULL);
 
 	UIRect bgRect = {0, 0, (16 * BG_WIDTH), (16 * BG_HEIGHT)};
-	UIView *bgView = view_new(bgRect, BG_WIDTH, BG_HEIGHT, "./terminal16x16.png", 0, render_ranking_bg_view);
+	UIView *bgView = view_new(bgRect, BG_WIDTH, BG_HEIGHT, (char*)"./terminal16x16.png", 0, render_ranking_bg_view);
 	list_insert_after(views, NULL, bgView);
 	if (rankConfig == NULL) {
-		rankConfig = config_file_parse("ranking.txt");
+		rankConfig = config_file_parse((char*)"ranking.txt");
 	}
     //handle_event_hof
 	return screen_new(views, bgView, handle_event_ranking);

@@ -157,7 +157,7 @@ static DungeonLevel *currentLevel;
 static u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
 static i32 (*targetMap)[MAP_HEIGHT] = NULL;
 static List *goPositions[MAP_WIDTH][MAP_HEIGHT];
-
+static char* playerName = NULL;
 void game_new();
-
+void *game_object_get_component(GameObject *obj, GameComponentType comp);
 #endif

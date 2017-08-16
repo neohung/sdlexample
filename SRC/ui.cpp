@@ -32,7 +32,7 @@ void ui_fill(u32 *pixels, u32 pixelsPerRow, UIRect *destRect, u32 color)
 }
 
 void console_clear(Console *con) {
-    UIRect r = {0, 0, con->width, con->height};
+    UIRect r = {0, 0, (int)con->width, (int)con->height};
     ui_fill(con->pixels, con->width, &r, 0x000000ff);
 }
 
@@ -134,7 +134,7 @@ UIRect rect_get_for_glyph(asciiChar c, ConsoleFont *font) {
     i32 charsPerRow = (font->atlasWidth / font->charWidth);
     i32 xOffset = (idx % charsPerRow) * font->charWidth;
     i32 yOffset = (idx / charsPerRow) * font->charHeight;
-    UIRect glyphRect = {xOffset, yOffset, font->charWidth, font->charHeight};
+    UIRect glyphRect = {xOffset, yOffset, (int)font->charWidth, (int)font->charHeight};
     return glyphRect;
 }
 
@@ -252,7 +252,7 @@ void console_put_char_at(Console *con, asciiChar c,
 
     i32 x = cellX * con->cellWidth;
     i32 y = cellY * con->cellHeight;
-    UIRect destRect = {x, y, con->cellWidth, con->cellHeight};
+    UIRect destRect = {x, y, (int)con->cellWidth, (int)con->cellHeight};
 
     // Fill the background with alpha blending
     ui_fill_blend(con->pixels, con->width, &destRect, bgColor);
@@ -510,7 +510,7 @@ BitmapImage *image_mask_create(BitmapImage *origImage, u32 primaryColor, u32 sec
 
 asciiChar image_match_glyph(Console *console, BitmapImage *maskImage) {
     ConsoleFont *font = console->font;
-    u32 fontCols = font->atlasWidth / font->charWidth;
+    //u32 fontCols = font->atlasWidth / font->charWidth;
 
     i32 matchCount = 0;
     asciiChar bestMatch = 0;

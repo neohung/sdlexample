@@ -21,7 +21,7 @@ SIZE=$(BINPATH)size
 ###################################################
 #sgcc -I /Library/Frameworks/SDL2.framework/Headers -framework SDL2 your_file.c
 CXXFLAGS  = -O2 -g -Wall -fmessage-length=0
-#CXXFLAGS +=  -DHAVE_STRUCT_TIMESPEC
+CXXFLAGS +=  -Wno-unused-function -Wno-unused-variable -Wno-unused-value -Wno-unused-but-set-variable
 ###################################################
 ifeq ($(OS),Windows_NT)
     CXXFLAGS += -D WIN32

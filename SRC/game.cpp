@@ -153,7 +153,9 @@ void game_object_update_component(GameObject *obj, GameComponentType comp, void 
 				}
 
 				if (addedNew) {
-					list_insert_after(visibilityComps, NULL, vis);					
+					printf("COMP_VISIBILITY: addedNew, id=%d, [%c]\n", vis->objectId,vis->glyph);
+					list_insert_after(visibilityComps, NULL, vis);
+					printf("COMP_VISIBILITY: %p\n",visibilityComps);
 				}
 				//Save compData
 				obj->components[comp] = vis;
@@ -217,7 +219,7 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 	//			floor_add(x, y);
 	//		}
 	//	}
-	//ÃŸ}
+	//Ÿ}
 
 	// Create DungeonLevel Object and store relevant info
 	DungeonLevel *level = (DungeonLevel *)malloc(sizeof(DungeonLevel));
@@ -256,17 +258,17 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 	
 	//Point ptStairs = level_get_open_point(mapCells);
 	Point ptStairs = {.x=10,.y=10};
-	Position stairPos = {.objectId = stairs->id, .x = ptStairs.x, .y = ptStairs.y, .layer = LAYER_GROUND};
+	Position stairPos = {.objectId = stairs->id, .x = (u8)ptStairs.x, .y = (u8)ptStairs.y, .layer = LAYER_GROUND};
 	game_object_update_component(stairs, COMP_POSITION, &stairPos);
-	Visibility vis = {.objectId = stairs->id, .glyph = '>', .fgColor = 0xffd700ff, .bgColor = 0x00000000, .visibleOutsideFOV = true, .name=(char*)"Stairs"};
+	Visibility vis = {.objectId = stairs->id, .glyph = '>', .fgColor = 0xffd700ff, .bgColor = 0x00000000, .hasBeenSeen=true, .visibleOutsideFOV = true, .name=(char*)"Stairs"};
 	game_object_update_component(stairs, COMP_VISIBILITY, &vis);
 	Physical phys = {.objectId = stairs->id, .blocksMovement = false, .blocksSight = false};
 	game_object_update_component(stairs, COMP_PHYSICAL, &phys);
 
 	// Place our player in a random position in the level
 	//Point pt = level_get_open_point(mapCells);
-	Point pt = {.x=0,.y=0};
-	Position pos = {.objectId = player->id, .x = pt.x, .y = pt.y, .layer = LAYER_TOP};
+	Point pt = {.x=10,.y=5};
+	Position pos = {.objectId = player->id, .x = (u8)pt.x, .y = (u8)pt.y, .layer = LAYER_TOP};
 	game_object_update_component(player, COMP_POSITION, &pos);
 
 	return level;
@@ -279,7 +281,7 @@ void game_new()
 	// Take a object from gameObjects[10000] as Player
 	player = game_object_create();
 	//
-	Visibility vis = {.objectId=player->id, .glyph='@', .fgColor=0x00FF00FF, .bgColor=0x00000000, .hasBeenSeen=true, .name=(char*)"Player"};
+	Visibility vis = {.objectId=player->id, .glyph='@', .fgColor=0x00FF00FF, .bgColor=0x00000000, .hasBeenSeen=true, .visibleOutsideFOV=true, .name=(char*)"Player"};
 	game_object_update_component(player, COMP_VISIBILITY, &vis);
 	//
 	Physical phys = {player->id, true, true};
@@ -288,16 +290,17 @@ void game_new()
 	Health hlth = {.objectId = player->id, .currentHP = 20, .maxHP = 20, .recoveryRate = 1};
 	game_object_update_component(player, COMP_HEALTH, &hlth);
 	//
-	Combat com = {.objectId = player->id, .toHit=80, .toHitModifier=0, .attack = 5, .defense = 2, .attackModifier = 0, .defenseModifier = 0, .dodgeModifier = 0};
+	Combat com = {.objectId = player->id, .toHit=80, .toHitModifier=0, .attack = 5,.attackModifier=0, .defense = 2,.defenseModifier=0, .dodgeModifier = 0};
 	game_object_update_component(player, COMP_COMBAT, &com);
 
 	//playerName = name_create();
+	playerName = (char*)"neo";
 
 	currentLevelNumber = 1;
 	currentLevel = level_init(currentLevelNumber, player);
 	
 	Position *playerPos = (Position *)game_object_get_component(player, COMP_POSITION);
-
+	printf("playerPos: id=%d,layer=%d x=%d,y=%d,\n",playerPos->objectId,playerPos->layer,playerPos->x,playerPos->y);
 	//fov_calculate(playerPos->x, playerPos->y, fovMap);
 
 	//generate_target_map(playerPos->x, playerPos->y);
