@@ -1,7 +1,32 @@
 #include "game.h"
-
+#include "map.h"
 #include <assert.h>
 #include <stdio.h>
+
+GameObject gameObjects[MAX_GO];
+List *visibilityComps;
+GameObject *player = NULL;
+List *positionComps;
+List *physicalComps;
+List *movementComps;
+List *healthComps;
+List *combatComps;
+List *equipmentComps;
+List *treasureComps;
+
+List *carriedItems;
+
+i32 maxMonsters[MAX_DUNGEON_LEVEL];
+i32 maxItems[MAX_DUNGEON_LEVEL];
+
+i32 currentLevelNumber;
+DungeonLevel *currentLevel;
+
+u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
+i32 (*targetMap)[MAP_HEIGHT] = NULL;
+//GameObjects List in this position
+List *goPositions[MAP_WIDTH][MAP_HEIGHT];
+char* playerName = NULL;
 
 void world_state_init() {
 	//Init gameObjects[] first
@@ -153,9 +178,9 @@ void game_object_update_component(GameObject *obj, GameComponentType comp, void 
 				}
 
 				if (addedNew) {
-					printf("COMP_VISIBILITY: addedNew, id=%d, [%c]\n", vis->objectId,vis->glyph);
+					//printf("COMP_VISIBILITY: addedNew, id=%d, [%c]\n", vis->objectId,vis->glyph);
 					list_insert_after(visibilityComps, NULL, vis);
-					printf("COMP_VISIBILITY: %p\n",visibilityComps);
+					//printf("COMP_VISIBILITY: %p\n",visibilityComps);
 				}
 				//Save compData
 				obj->components[comp] = vis;
@@ -172,6 +197,29 @@ void game_object_update_component(GameObject *obj, GameComponentType comp, void 
 		}
 		break;
 		case COMP_PHYSICAL: {
+			if (compData != NULL) {
+				Physical *phys = (Physical *)obj->components[COMP_PHYSICAL];
+				bool addedNew = false;
+				if (phys == NULL) {
+					phys = (Physical *)malloc(sizeof(Physical));
+					addedNew = true;
+				}
+				Physical *physData = (Physical *)compData;
+				phys->objectId = obj->id;
+				phys->blocksSight = physData->blocksSight;
+				phys->blocksMovement = physData->blocksMovement;
+				if (addedNew) {
+					list_insert_after(physicalComps, NULL, phys);
+				}
+				obj->components[comp] = phys;
+			}else{
+				//Clear Component
+				Physical *phys = (Physical *)obj->components[COMP_PHYSICAL];
+				if (phys != NULL) {
+					list_remove_element_with_data(physicalComps, phys);
+				}
+				obj->components[comp] = NULL;
+			}
 		}
 		break;
 		case COMP_MOVEMENT: {
@@ -198,6 +246,26 @@ void game_object_update_component(GameObject *obj, GameComponentType comp, void 
 
 }
 
+void wall_add(u8 x, u8 y) {
+	GameObject *wall = game_object_create();
+	Position wallPos = {.objectId = wall->id, .x = x, .y = y, .layer = LAYER_GROUND};
+	game_object_update_component(wall, COMP_POSITION, &wallPos);
+	Visibility wallVis = {wall->id, '#', 0x675644FF, 0x00000000, .hasBeenSeen=true,.visibleOutsideFOV = true, .name=(char*)"Wall"};
+	game_object_update_component(wall, COMP_VISIBILITY, &wallVis);
+	Physical wallPhys = {wall->id, true, true};
+	game_object_update_component(wall, COMP_PHYSICAL, &wallPhys);
+}
+
+void floor_add(u8 x, u8 y) {
+	GameObject *floor = game_object_create();
+	Position floorPos = {.objectId = floor->id, .x = x, .y = y, .layer = LAYER_GROUND};
+	game_object_update_component(floor, COMP_POSITION, &floorPos);
+	Visibility floorVis = {.objectId = floor->id, .glyph = '.', .fgColor = 0x3e3c3cFF, .bgColor = 0x00000000, .hasBeenSeen=true,.visibleOutsideFOV = true, .name=(char*)"Floor"};
+	game_object_update_component(floor, COMP_VISIBILITY, &floorVis);
+	Physical floorPhys = {.objectId = floor->id, .blocksMovement = false, .blocksSight = false};
+	game_object_update_component(floor, COMP_PHYSICAL, &floorPhys);
+}
+
 DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 
 	// Clear the previous level data from the world state
@@ -209,22 +277,23 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 	}
 
 	// Generate a level map into the world state
-	//bool (*mapCells)[MAP_HEIGHT] =  malloc(MAP_WIDTH * MAP_HEIGHT);
-	//map_generate(mapCells);
-	//for (u32 x = 0; x < MAP_WIDTH; x++) {
-	//	for (u32 y = 0; y < MAP_HEIGHT; y++) {
-	//		if (mapCells[x][y]) {
-	//			wall_add(x, y);
-	//		} else {
-	//			floor_add(x, y);
-	//		}
-	//	}
-	//Ÿ}
+	//bool (*mapCells)[MAP_HEIGHT] = (char*) malloc(MAP_WIDTH * MAP_HEIGHT);
+	bool **mapCells = map_new(MAP_WIDTH, MAP_HEIGHT);
+	map_generate(mapCells);
+	for (u32 x = 0; x < MAP_WIDTH; x++) {
+		for (u32 y = 0; y < MAP_HEIGHT; y++) {
+			if (mapCells[y][x]) {
+				wall_add(x, y);
+			} else {
+				floor_add(x, y);
+			}
+		}
+	}
 
 	// Create DungeonLevel Object and store relevant info
 	DungeonLevel *level = (DungeonLevel *)malloc(sizeof(DungeonLevel));
 	level->level = levelToGenerate;
-	//level->mapWalls = mapCells;
+	level->mapWalls = mapCells;
 
 	// Grab the number of monsters to generate for this level from level config
 	i32 monstersToAdd = maxMonsters[levelToGenerate-1];
@@ -257,7 +326,7 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 	GameObject *stairs = game_object_create();
 	
 	//Point ptStairs = level_get_open_point(mapCells);
-	Point ptStairs = {.x=10,.y=10};
+	Point ptStairs = {.x=1,.y=1};
 	Position stairPos = {.objectId = stairs->id, .x = (u8)ptStairs.x, .y = (u8)ptStairs.y, .layer = LAYER_GROUND};
 	game_object_update_component(stairs, COMP_POSITION, &stairPos);
 	Visibility vis = {.objectId = stairs->id, .glyph = '>', .fgColor = 0xffd700ff, .bgColor = 0x00000000, .hasBeenSeen=true, .visibleOutsideFOV = true, .name=(char*)"Stairs"};
@@ -267,10 +336,11 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 
 	// Place our player in a random position in the level
 	//Point pt = level_get_open_point(mapCells);
-	Point pt = {.x=10,.y=5};
+	Point pt = {.x=2,.y=2};
 	Position pos = {.objectId = player->id, .x = (u8)pt.x, .y = (u8)pt.y, .layer = LAYER_TOP};
 	game_object_update_component(player, COMP_POSITION, &pos);
 
+	//
 	return level;
 }
 
@@ -306,4 +376,30 @@ void game_new()
 	//generate_target_map(playerPos->x, playerPos->y);
 }
 
+bool can_move(Position pos) {
+	bool moveAllowed = true;
+	int NUM_COLS = MAP_WIDTH;
+	int NUM_ROWS = MAP_HEIGHT;
+	if ((pos.x >= 0) && (pos.x < NUM_COLS) && (pos.y >= 0) && (pos.y < NUM_ROWS)) {
+		ListElement *e = list_head(positionComps);
+		while (e != NULL) {
+			Position *p = (Position *)list_data(e);
+			if (p != NULL){
+				if (p->x == pos.x && p->y == pos.y) {
+					Physical *phys = (Physical *)game_object_get_component(&gameObjects[p->objectId], COMP_PHYSICAL);
+					if ((phys != NULL) && (phys->blocksMovement == true)) {
+						moveAllowed = false;
+						break;
+					}
+				}
+			}else{
+				printf("can_move: p==NULL\n");
+			}
+			e = list_next(e);
+		}
+	}else{
+		moveAllowed = false;
+	}
+	return moveAllowed;
+}
 

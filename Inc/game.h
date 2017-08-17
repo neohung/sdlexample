@@ -11,6 +11,13 @@
 #define LAYER_AIR		3
 #define LAYER_TOP		4
 //======================================
+
+#define FPS_LIMIT		20
+#define SCREEN_WIDTH	640 //320 //1280
+#define SCREEN_HEIGHT	480 //240 //720
+#define BG_WIDTH    (SCREEN_WIDTH / 16)
+#define BG_HEIGHT   (SCREEN_HEIGHT / 16)
+
 #define MAX_GO 10000
 
 #define MONSTER_TYPE_COUNT	100
@@ -18,8 +25,11 @@
 #define MAX_DUNGEON_LEVEL	20
 #define GEMS_PER_LEVEL		5
 
-#define MAP_WIDTH	80
-#define MAP_HEIGHT	40
+//#define MAP_WIDTH	80
+//#define MAP_HEIGHT	40
+#define MAP_WIDTH	(SCREEN_WIDTH / 16)
+#define MAP_HEIGHT	((SCREEN_HEIGHT / 16) - 5)
+
 
 //=======================================
 
@@ -125,7 +135,7 @@ typedef struct {
 
 typedef struct {
 	i32 level;
-	bool (*mapWalls)[MAP_HEIGHT];
+	bool **mapWalls;
 } DungeonLevel;
 
 
@@ -135,29 +145,35 @@ typedef struct {
 	u32 fgColor;
 } Message;
 
-static GameObject gameObjects[MAX_GO];
-static GameObject *player = NULL;
-static List *visibilityComps;
-static List *positionComps;
-static List *physicalComps;
-static List *movementComps;
-static List *healthComps;
-static List *combatComps;
-static List *equipmentComps;
-static List *treasureComps;
 
-static List *carriedItems;
+extern GameObject gameObjects[MAX_GO];
+extern List *visibilityComps;
+extern GameObject *player;
+extern List *positionComps;
+extern List *physicalComps;
+extern List *movementComps;
+extern List *healthComps;
+extern List *combatComps;
+extern List *equipmentComps;
+extern List *treasureComps;
 
-static i32 maxMonsters[MAX_DUNGEON_LEVEL];
-static i32 maxItems[MAX_DUNGEON_LEVEL];
+extern List *carriedItems;
 
-static	i32 currentLevelNumber;
-static DungeonLevel *currentLevel;
+extern i32 maxMonsters[MAX_DUNGEON_LEVEL];
+extern i32 maxItems[MAX_DUNGEON_LEVEL];
 
-static u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
-static i32 (*targetMap)[MAP_HEIGHT] = NULL;
-static List *goPositions[MAP_WIDTH][MAP_HEIGHT];
-static char* playerName = NULL;
+extern i32 currentLevelNumber;
+extern DungeonLevel *currentLevel;
+
+extern u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
+extern i32 (*targetMap)[MAP_HEIGHT];
+extern List *goPositions[MAP_WIDTH][MAP_HEIGHT];
+extern char* playerName;
+
 void game_new();
+DungeonLevel * level_init(i32 levelToGenerate, GameObject *player);
 void *game_object_get_component(GameObject *obj, GameComponentType comp);
+void game_object_update_component(GameObject *obj, GameComponentType comp, void *compData);
+List *game_objects_at_position(u32 x, u32 y);
+bool can_move(Position pos);
 #endif

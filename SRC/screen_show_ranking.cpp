@@ -1,4 +1,9 @@
-
+#include <stdio.h>
+#include "ui.h"
+#include "game.h"
+#include "config.h"
+//asciiMode from main.cpp
+extern bool asciiMode;
 Config *rankConfig = NULL;
 UIScreen *ranking_screen = NULL;
 
@@ -38,6 +43,7 @@ void render_ranking_entries(Console *console) {
 
 void render_ranking_bg_view(Console *console)
 {
+
 	// We should load and process the bg image only once, not on each render
 	BitmapImage *bgImage = NULL;
 	AsciiImage *aiImage = NULL;
@@ -52,16 +58,17 @@ void render_ranking_bg_view(Console *console)
 		view_draw_image_at(console, bgImage, 0, 0);
 	}
 
-	UIRect rect = {10, 5, 60, 34};
+	//UIRect rect = {5, 5, BG_WIDTH-5, BG_HEIGHT-5};
+	UIRect rect = {1, 1, BG_WIDTH-1-1, BG_HEIGHT-1-1};
+
 	view_draw_rect(console, &rect, 0x363247dd, 2, 0xaad700ff);
 
-	console_put_string_at(console, (char*)"-== Ranking ==-", 28, 7, 0xaad700ff, 0x00000000);
+	console_put_string_at(console, (char*)"-== Ranking ==-", 10, 7, 0xaad700ff, 0x00000000);
 
 	render_ranking_entries(console);
 
-    console_put_string_at(console, (char*)"-== TEST MSG ==-", 31, 32, 0xaad700ff, 0x00000000);
-	console_put_string_at(console, (char*)"This is a test Message, test the message to show", 15, 34, 0xffffffff, 0x00000000);
-
+    console_put_string_at(console, (char*)"-== TEST MSG ==-", 1, 32, 0xaad700ff, 0x00000000);
+	console_put_string_at(console, (char*)"This is a test Message, test the message to show", 1, 34, 0xffffffff, 0x00000000);
 }
 
 UIScreen *screen_test(void);

@@ -1,7 +1,8 @@
 
 # Sources
 
-SRCS = list.cpp ui.cpp main.cpp config.cpp game.cpp
+SRCS = list.cpp ui.cpp main.cpp config.cpp map.cpp game.cpp
+SRCS += screen_show_in_game.cpp screen_show_ranking.cpp
 
 ###################################################
 
