@@ -93,10 +93,10 @@ typedef struct {
 	i32 speed;				// How many spaces the object can move when it moves.
 	i32 frequency;			// How often the object moves. 1=every tick, 2=every other tick, etc.
 	i32 ticksUntilNextMove;	// Countdown to next move. Moves when = 0.
-	Point destination;
-	bool hasDestination;
 	bool chasingPlayer;
 	i32 turnsSincePlayerSeen;
+	bool hasDestination;
+	Point destination;
 } Movement;
 
 typedef struct {
@@ -170,6 +170,7 @@ extern i32 (*targetMap)[MAP_HEIGHT];
 extern List *goPositions[MAP_WIDTH][MAP_HEIGHT];
 extern char* playerName;
 
+void game_update();
 void game_new();
 DungeonLevel * level_init(i32 levelToGenerate, GameObject *player);
 void *game_object_get_component(GameObject *obj, GameComponentType comp);

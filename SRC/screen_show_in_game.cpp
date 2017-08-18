@@ -18,6 +18,8 @@ void render_game_map_view(Console *console)
 		ListElement *e = list_head(visibilityComps);
 		while (e != NULL) {
 			Visibility *vis = (Visibility *)list_data(e);
+			//if ( vis->objectId > 1000)
+			//  printf("VIS: %s, [%d, '%c']\n",vis->name, vis->objectId, vis->glyph);
 			Position *p = (Position *)game_object_get_component(&gameObjects[vis->objectId], COMP_POSITION);
 			if (p != NULL) {
 				if (fovMap[p->x][p->y] > 0) {
@@ -30,7 +32,8 @@ void render_game_map_view(Console *console)
 					}
 
 				} else if (vis->visibleOutsideFOV && vis->hasBeenSeen) {
-				//Out of fov but still can see, so use fade color
+					//Out of fov but still can see, so use fade color
+					//If this p->layer lower then previously render layer before, we don't render it.
 					if (p->layer > layerRendered[p->x][p->y]) {
 						u32 fullColor = vis->fgColor;
 						u32 fadedColor = COLOR_FROM_RGBA(RED(fullColor), GREEN(fullColor), BLUE(fullColor), 0x77);

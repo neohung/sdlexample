@@ -111,6 +111,7 @@ void render_bg_view(Console *console)
 
 //#include "screen_show_ranking.cpp"
 //#include "screen_show_in_game.cpp"
+bool currentlyInGame = false;
 extern UIScreen *screen_show_in_game();
 extern UIScreen *screen_show_ranking();
 void handle_event_launch(UIScreen *activeScreen, UIEvent event)
@@ -122,7 +123,7 @@ void handle_event_launch(UIScreen *activeScreen, UIEvent event)
 				// Start a new game and transition to in-game screen
 				game_new();
 				ui_set_active_screen(screen_show_in_game());
-				//currentlyInGame = true;
+				currentlyInGame = true;
 				}
 				break;
 			case SDLK_r: {
@@ -184,8 +185,6 @@ int main(int argc, char* argv[]) {
 
     //Before running loop, init activeScreen
     ui_set_active_screen(screen_test());
-
-    bool currentlyInGame = false;
     while (gameIsRunning) {
     	SDL_Event event;
     	u32 timePerFrame = 1000 / FPS_LIMIT;
@@ -223,7 +222,7 @@ int main(int argc, char* argv[]) {
     		}
     	}
     	if (currentlyInGame) {
-    		//game_update();
+    		game_update();
     	}
     	//Render active screen
     	render_screen(renderer, screenTexture, ui_get_active_screen());
