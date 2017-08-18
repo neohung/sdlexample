@@ -170,6 +170,9 @@ extern i32 (*targetMap)[MAP_HEIGHT];
 extern List *goPositions[MAP_WIDTH][MAP_HEIGHT];
 extern char* playerName;
 
+extern bool playerTookTurn;
+extern bool recalculateFOV;
+
 void game_update();
 void game_new();
 DungeonLevel * level_init(i32 levelToGenerate, GameObject *player);

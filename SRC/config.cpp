@@ -2,6 +2,7 @@
 
 #include <stdio.h> //fopen
 #include <stdarg.h> //va_list
+
 Config * config_file_parse(char * filename) {
 	Config *cfg = NULL;
 

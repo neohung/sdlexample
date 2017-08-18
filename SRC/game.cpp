@@ -30,6 +30,9 @@ i32 (*targetMap)[MAP_HEIGHT] = NULL;
 List *goPositions[MAP_WIDTH][MAP_HEIGHT];
 char* playerName = NULL;
 
+bool playerTookTurn = false;
+bool recalculateFOV = false;
+
 GameObject *game_object_create() {
 	// Find the next available object space
 	GameObject *go = NULL;
@@ -623,11 +626,91 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 	return level;
 }
 
+void movement_update() {
+
+	ListElement *e = list_head(movementComps);
+	while (e != NULL) {
+		Movement *mv = (Movement *)list_data(e);
+		mv->ticksUntilNextMove -= 1;
+		if (mv->ticksUntilNextMove <= 0) {
+			printf("%d %s\n", mv->objectId ,"got move");
+			Position *p = (Position *)game_object_get_component(&gameObjects[mv->objectId], COMP_POSITION);
+			Position newPos = {.objectId = p->objectId, .x = p->x, .y = p->y, .layer = p->layer};
+			// A monster should only move toward the player if they have seen the player
+			// Should give chase if player is currently in view or has been in view in the last 5 turns
+			bool giveChase = false;
+			if (fovMap[p->x][p->y] > 0) {
+				// Player is visible
+				giveChase = true;
+				mv->chasingPlayer = true;
+				mv->turnsSincePlayerSeen = 0;
+			} else {
+
+			}
+			
+			i32 speedCounter = mv->speed;
+			while (speedCounter > 0) {
+				// Determine if we're currently in combat range of the player
+				//if ((fovMap[p->x][p->y] > 0) && (targetMap[p->x][p->y] == 1)) {
+				if ((fovMap[p->x][p->y] > 0)) {
+					// Combat range - so attack the player
+					//combat_attack(&gameObjects[mv->objectId], player);
+
+				} else {
+					// Out of combat range, so determine new position based on our target map
+					if (giveChase) {
+						
+
+					}else {
+						// Move randomly?
+						u32 dir = rand() % 4;
+						switch (dir) {
+							case 0:
+								newPos.x -= 1;
+								break;
+							case 1:
+								newPos.y -= 1;
+								break;
+							case 2:
+								newPos.x += 1;
+								break;
+							default: 
+								newPos.y += 1;
+
+							}
+					}
+					if (can_move(newPos)) {
+						game_object_update_component(&gameObjects[mv->objectId], COMP_POSITION, &newPos);
+						mv->ticksUntilNextMove = mv->frequency;				
+					} else {
+						mv->ticksUntilNextMove += 1;
+					}
+				}
+				speedCounter -= 1;
+			}
+			
+		}
+		e = list_next(e);
+	}
+}
+
 void game_update()
 {
 	//printf("void game_update() \n");
-	Position *pos = (Position *)game_object_get_component(player, COMP_POSITION);
-	fov_calculate(pos->x, pos->y, fovMap);
+	if (playerTookTurn) {
+		Position *playerPos = (Position *)game_object_get_component(player, COMP_POSITION);
+		//generate_target_map(playerPos->x, playerPos->y);
+		movement_update();			
+		//environment_update(playerPos);
+
+		//health_removal_update();
+	}
+
+	if (recalculateFOV) {
+		Position *pos = (Position *)game_object_get_component(player, COMP_POSITION);
+		fov_calculate(pos->x, pos->y, fovMap);
+		recalculateFOV = false;
+	}
 
 }
 

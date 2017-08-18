@@ -92,8 +92,8 @@ void handle_event_in_game(UIScreen *activeScreen, UIEvent event)
 				//printf("Detect can move\n");
 				if (can_move(newPos)) {
 					game_object_update_component(player, COMP_POSITION, &newPos);
-					//recalculateFOV = true;
-					//playerTookTurn = true;
+					recalculateFOV = true;
+					playerTookTurn = true;
 				}else{
 					// Check to see what is blocking movement. If NPC - resolve combat!
 					List *blockers = game_objects_at_position(playerPos->x+ offsetx, playerPos->y + offsety);
