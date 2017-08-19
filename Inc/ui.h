@@ -106,4 +106,5 @@ AsciiImage* asciify_bitmap(Console *con, BitmapImage *image);
 void view_draw_image_at(Console *console, BitmapImage *image, i32 cellX, i32 cellY);
 void view_draw_ascii_image_at(Console *console, AsciiImage *image, i32 cellX, i32 cellY);
 void ui_set_active_screen(UIScreen *screen);
+void view_destroy(UIView *view);
 #endif

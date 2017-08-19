@@ -1,7 +1,6 @@
 #include "config.h"
 
 #include <stdio.h> //fopen
-#include <stdarg.h> //va_list
 
 Config * config_file_parse(char * filename) {
 	Config *cfg = NULL;
@@ -105,43 +104,4 @@ void config_file_write(char *filename, Config *config) {
 		}
 	}
 	fclose(configFile);
-}
-
-char * String_Create(const char * stringWithFormat, ...) {
-    char *str = NULL;
-    char *fmt;
-
-    // Make a copy of our formatted string to work with
-    if (stringWithFormat != NULL) {
-        fmt = strdup(stringWithFormat);
-    } else {
-        fmt = strdup("");
-    }
-
-    // Now apply the formatting on a trial run to determine how long the formatted string should be
-    va_list argp;
-    va_start(argp, stringWithFormat);
-    char one_char[1];
-    int len = vsnprintf(one_char, 1, fmt, argp);
-    if (len < 1) {
-        return NULL;
-    }
-    va_end(argp);
-
-    // Allocate enough memory, and generate the formatted string for reals
-    str = (char*)malloc(len + 1);
-    if (!str) {
-        return NULL;
-    }
-    va_start(argp, stringWithFormat);
-    vsnprintf(str, len + 1, fmt, argp);
-    va_end(argp);
-
-    free(fmt);
-
-    return str;
-}
-
-void String_Destroy(char *string) {
-    free(string);
 }

@@ -2,6 +2,7 @@
 #include "map.h"
 #include "config.h"
 #include "fov.h"
+#include "stringutil.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -23,15 +24,19 @@ i32 maxItems[MAX_DUNGEON_LEVEL];
 
 i32 currentLevelNumber;
 DungeonLevel *currentLevel;
-
 u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
-i32 (*targetMap)[MAP_HEIGHT] = NULL;
+i32 **targetMap = NULL;
 //GameObjects List in this position
 List *goPositions[MAP_WIDTH][MAP_HEIGHT];
 char* playerName = NULL;
+List *messageLog = NULL;
+i32 maxWeightAllowed;
 
 bool playerTookTurn = false;
 bool recalculateFOV = false;
+i32 gemsFoundTotal = 0;
+
+bool asciiMode = true;
 
 GameObject *game_object_create() {
 	// Find the next available object space
@@ -171,7 +176,7 @@ void game_object_update_component(GameObject *obj, GameComponentType comp, void 
 				//Save compData
 				obj->components[comp] = vis;
 			}else{
-				printf("%s\n", "COMP_VISIBILITY, compData=NULL clear component");
+				//printf("%s\n", "COMP_VISIBILITY, compData=NULL clear component");
 				Visibility *vis = (Visibility *)obj->components[COMP_VISIBILITY];
 				if (vis != NULL) {
 					//Remove compoment from visibilityComps[]
@@ -384,7 +389,7 @@ void npc_add(char *name, u8 x, u8 y, u8 layer, asciiChar glyph, u32 fgColor,
 	GameObject *npc = game_object_create();
 	Position pos = {.objectId = npc->id, .x = x, .y = y, .layer = layer};
 	game_object_update_component(npc, COMP_POSITION, &pos);
-	Visibility vis = {.objectId = npc->id, .glyph = glyph, .fgColor = fgColor, .bgColor = 0x00000000, .hasBeenSeen=true,.visibleOutsideFOV = false, .name = name};
+	Visibility vis = {.objectId = npc->id, .glyph = glyph, .fgColor = fgColor, .bgColor = 0x00000000, .hasBeenSeen=true,.visibleOutsideFOV = true, .name = name};
 	game_object_update_component(npc, COMP_VISIBILITY, &vis);
 	Physical phys = {.objectId = npc->id, .blocksMovement = true, .blocksSight = false};
 	game_object_update_component(npc, COMP_PHYSICAL, &phys);
@@ -393,9 +398,26 @@ void npc_add(char *name, u8 x, u8 y, u8 layer, asciiChar glyph, u32 fgColor,
 	game_object_update_component(npc, COMP_MOVEMENT, &mv);
 	Health hlth = {.objectId = npc->id, .currentHP = maxHP, .maxHP = maxHP, .recoveryRate = hpRecRate};
 	game_object_update_component(npc, COMP_HEALTH, &hlth);
+	//
 	Combat com = {.objectId = npc->id,.toHit = toHit, .toHitModifier = hitMod, .attack = attack, .attackModifier = attMod,.defense = defense, .defenseModifier = defMod, .dodgeModifier = dodgeMod};
 	game_object_update_component(npc, COMP_COMBAT, &com);
 }
+
+void item_add(char *name, u8 x, u8 y, u8 layer, asciiChar glyph, u32 fgColor, 
+	i32 hitMod, i32 attMod, i32 defMod, i32 dodgeMod, i32 quantity, i32 weight, char *slot) {
+	GameObject *item = game_object_create();
+	Position pos = {.objectId = item->id, .x = x, .y = y, .layer = layer};
+	game_object_update_component(item, COMP_POSITION, &pos);
+	Physical phys = {.objectId = item->id, .blocksMovement = false, .blocksSight = false};
+	game_object_update_component(item, COMP_PHYSICAL, &phys);
+	Visibility vis = {.objectId = item->id, .glyph = glyph, .fgColor = fgColor, .bgColor = 0x00000000, .hasBeenSeen=true,.visibleOutsideFOV = true, .name = name};
+	game_object_update_component(item, COMP_VISIBILITY, &vis);
+	Combat com = {.objectId = item->id, .toHitModifier = hitMod, .attackModifier = attMod, .defenseModifier = defMod, .dodgeModifier = dodgeMod};
+	game_object_update_component(item, COMP_COMBAT, &com);
+	Equipment eq = {.objectId = item->id, .quantity = quantity, .weight = weight, .slot = slot};
+	game_object_update_component(item, COMP_EQUIPMENT, &eq);
+}
+
 
 Point level_get_open_point(bool **mapCells) {
 	// Return a random position within the level that is open
@@ -452,7 +474,7 @@ void get_max_counts(ConfigEntity *entity, char *propertyName, i32 *maxCounts) {
 
 Config *levelConfig = NULL;
 Config *monsterConfig = NULL;
-
+Config *itemConfig = NULL;
 
 void world_state_init() {
 	//Init gameObjects[] first
@@ -473,6 +495,7 @@ void world_state_init() {
 	// Parse necessary config files into memory
 	levelConfig = config_file_parse((char*)"levels.txt");
 	monsterConfig = config_file_parse((char*)"monsters.txt");
+	itemConfig = config_file_parse((char*)"items.txt");
 
 	ListElement *e = list_head(levelConfig->entities);
 	if (e != NULL) {
@@ -481,6 +504,12 @@ void world_state_init() {
 		//means 0~3=10, 4~5=15, 6~10=20
 		get_max_counts(levelEntity,(char*)"max_monsters", maxMonsters);
 		get_max_counts(levelEntity, (char*)"max_items", maxItems);
+	}
+
+	// Clear our message log if necessary
+	if (messageLog != NULL) {
+		list_destroy(messageLog);
+		messageLog = NULL;
 	}
 
 }
@@ -496,6 +525,10 @@ i32 monster_for_level(i32 level) {
 		}
 	}
 	*/
+	return 1;
+}
+
+i32 item_for_level(i32 level) {
 	return 1;
 }
 
@@ -530,6 +563,72 @@ int xtoi(char *hexstring) {
 		i = (i << 4) + c;
 	}
 	return i;
+}
+
+typedef struct {
+	Point target;
+	i32 weight;
+} TargetPoint;
+
+bool is_wall(i32 x, i32 y) {
+	return currentLevel->mapWalls[y][x];
+}
+
+void generate_target_map(i32 targetX, i32 targetY) { // List *targetPoints) {
+	// Clean up any previously generated target map
+	if (targetMap != NULL) {
+		free(targetMap);
+	}
+
+	//i32 (* dmap)[MAP_HEIGHT] = malloc(MAP_WIDTH * MAP_HEIGHT * sizeof(i32));
+	i32 **dmap, *pData;
+	int m=MAP_WIDTH;
+	int n=MAP_HEIGHT;
+	int index;
+	dmap = (i32 **)malloc(m*sizeof(i32 *)+m*n*sizeof(i32));
+	for (index = 0, pData = (i32 *)(dmap+m); index < m; index++, pData += n)
+		dmap[index]=pData;
+
+	i32 UNSET = 9999;
+
+	for (i32 x = 0; x < MAP_WIDTH; x++) {
+		for (i32 y = 0; y < MAP_HEIGHT; y++) {
+			dmap[x][y] = UNSET;
+		}
+	}
+
+	// Set our target point(s)
+	dmap[targetX][targetY] = 0;
+	// Calculate our target map
+	bool changesMade = true;
+	while (changesMade) {
+		changesMade = false;
+		for (i32 x = 0; x < MAP_WIDTH; x++) {
+			for (i32 y = 0; y < MAP_HEIGHT; y++) {
+				i32 currCellValue = dmap[x][y];
+				if (currCellValue != UNSET) {
+					// Check cells around this one and update them if warranted
+					if ((!is_wall(x+1, y)) && (dmap[x+1][y] > currCellValue + 1)) { 
+						dmap[x+1][y] = currCellValue + 1;
+						changesMade = true;
+					}
+					if ((!is_wall(x-1, y)) && (dmap[x-1][y] > currCellValue + 1)) { 
+						dmap[x-1][y] = currCellValue + 1;
+						changesMade = true;
+					}
+					if ((!is_wall(x, y-1)) && (dmap[x][y-1] > currCellValue + 1)) { 
+						dmap[x][y-1] = currCellValue + 1;
+						changesMade = true;
+					}
+					if ((!is_wall(x, y+1)) && (dmap[x][y+1] > currCellValue + 1)) { 
+						dmap[x][y+1] = currCellValue + 1;
+						changesMade = true;
+					}
+				}
+			}
+		}
+	}
+	targetMap = dmap;
 }
 
 DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
@@ -587,17 +686,33 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 			i32 hit = atoi(config_entity_value(monsterEntity,  (char*)"com_toHit"));
 			i32 att = atoi(config_entity_value(monsterEntity,  (char*)"com_attack"));
 			i32 def = atoi(config_entity_value(monsterEntity,  (char*)"com_defense"));
-			printf("name=%s\n",name);
+			//printf("name=%s\n",name);
 			npc_add(name, pt.x, pt.y, LAYER_TOP, g, c, s, f, hp, rr, hit, 0, att, def, 0, 0, 0);
 		}
 	}
 	i32 itemsToAdd = maxItems[levelToGenerate-1];
+	//printf("itemsToAdd %d\n", itemsToAdd);
 	for (i32 i = 0; i < itemsToAdd; i++) {
-		//i32 itemId = item_for_level(levelToGenerate);
-		//ConfigEntity *entity = get_entity_with_id(itemConfig, itemId);
-		//if (entity != NULL) {
-			//item_add(name, pt.x, pt.y, LAYER_MID, g, c, toHitMod, attMod, defMod, dodgeMod, qty, weight, slot);
-		//}
+		i32 itemId = item_for_level(levelToGenerate);
+		ConfigEntity *entity = get_entity_with_id(itemConfig, itemId);
+		if (entity != NULL) {
+			Point pt = level_get_open_point(mapCells);
+			char *name = config_entity_value(entity, (char*)"name");
+			char *glyph = config_entity_value(entity, (char*)"vis_glyph");
+			asciiChar g = atoi(glyph);
+			char *color = config_entity_value(entity, (char*)"vis_color");
+			u32 c = xtoi(color);
+
+			i32 toHitMod = atoi(config_entity_value(entity, (char*)"com_toHitModifier"));
+			i32 attMod = atoi(config_entity_value(entity, (char*)"com_attackModifier"));
+			i32 defMod = atoi(config_entity_value(entity, (char*)"com_defenseModifier"));
+			i32 dodgeMod = atoi(config_entity_value(entity, (char*)"com_dodgeModifier"));
+
+			i32 qty = atoi(config_entity_value(entity, (char*)"eq_quantity"));
+			char *slot = config_entity_value(entity, (char*)"eq_slot");
+			i32 weight = atoi(config_entity_value(entity, (char*)"eq_weight"));
+			item_add(name, pt.x, pt.y, LAYER_MID, g, c, toHitMod, attMod, defMod, dodgeMod, qty, weight, slot);
+		}
 	}
 
 	// Place gems in random positions around the level
@@ -626,6 +741,80 @@ DungeonLevel * level_init(i32 levelToGenerate, GameObject *player) {
 	return level;
 }
 
+void health_check_death(GameObject *go) {
+	Health *h = (Health *)game_object_get_component(go, COMP_HEALTH);
+	if (h->currentHP <= 0) {
+		//Death
+		if (go == player) {
+			//printf("You are dead\n");
+			//exit(1);
+			char *msg = String_Create("You have died.");
+			add_message(msg, 0xCC0000FF);
+			String_Destroy(msg);
+			//game_over();
+			//ui_set_active_screen(screen_show_endgame());
+		} else {
+			Visibility *vis = (Visibility *)game_object_get_component(go, COMP_VISIBILITY);
+			vis->glyph = '%';
+			vis->fgColor = 0x990000FF;
+			char *msg = String_Create("You killed the %s.", vis->name);
+			add_message(msg, 0xff9900FF);
+			String_Destroy(msg);
+			Position *pos = (Position *)game_object_get_component(go, COMP_POSITION);
+			pos->layer = LAYER_GROUND;
+			Physical *phys = (Physical *)game_object_get_component(go, COMP_PHYSICAL);
+			phys->blocksMovement = false;
+			phys->blocksSight = false;
+			// Remove the movement component - no more moving!
+			game_object_update_component(go, COMP_MOVEMENT, NULL);
+			h->ticksUntilRemoval = 5;
+		}
+	}
+}
+
+void combat_deal_damage(GameObject *attacker, GameObject *defender) {
+	Combat *att = (Combat *)game_object_get_component(attacker, COMP_COMBAT);
+	Combat *def = (Combat *)game_object_get_component(defender, COMP_COMBAT);
+	Health *defHealth = (Health *)game_object_get_component(defender, COMP_HEALTH);
+
+	i32 totAtt = (rand() % att->attack) + att->attackModifier;
+	i32 totDef = (rand() % def->defense) + def->defenseModifier;
+	if (totDef >= totAtt) {
+		if (attacker == player) {
+			add_message((char*)"Your attack didn't do any damage.", 0xCCCCCCFF);
+		} else {
+			add_message((char*)"The creature's pathetic attack didn't do any damage.", 0xCCCCCCFF);
+		}
+	} else {
+		if (attacker == player) {
+			Visibility *vis = (Visibility *)game_object_get_component(defender, COMP_VISIBILITY);
+			char *msg = String_Create((char*)"You hit the %s for %d damage.", vis->name, (totAtt - totDef));
+			add_message(msg, 0xCCCCCCFF);
+			String_Destroy(msg);
+		} else {
+			Visibility *vis = (Visibility *)game_object_get_component(attacker, COMP_VISIBILITY);
+			char *msg = String_Create((char*)"The %s hits you for %d damage.", vis->name, (totAtt - totDef));
+			add_message(msg, 0xCCCCCCFF);
+			String_Destroy(msg);
+		}
+		defHealth->currentHP -= (totAtt - totDef);
+		health_check_death(defender);
+	}
+	//printf("Deal combat_deal_damag: defHealth->currentHP=%d\n",defHealth->currentHP);
+}
+void combat_attack(GameObject *attacker, GameObject *defender) {
+	//printf("%s\n", "Deal combat_attack");
+	Combat *att = (Combat *)game_object_get_component(attacker, COMP_COMBAT);
+	Combat *def = (Combat *)game_object_get_component(defender, COMP_COMBAT);
+
+	i32 hitRoll = (rand() % 100) + 1;
+	i32 hitWindow = (att->toHit + att->toHitModifier) - def->dodgeModifier;
+	if ((hitRoll < hitWindow) || (hitRoll == 100)) {
+		// We have a hit
+		combat_deal_damage(attacker, defender);
+	}
+}
+
 void movement_update() {
 
 	ListElement *e = list_head(movementComps);
@@ -633,7 +822,7 @@ void movement_update() {
 		Movement *mv = (Movement *)list_data(e);
 		mv->ticksUntilNextMove -= 1;
 		if (mv->ticksUntilNextMove <= 0) {
-			printf("%d %s\n", mv->objectId ,"got move");
+			//printf("%d %s\n", mv->objectId ,"got move");
 			Position *p = (Position *)game_object_get_component(&gameObjects[mv->objectId], COMP_POSITION);
 			Position newPos = {.objectId = p->objectId, .x = p->x, .y = p->y, .layer = p->layer};
 			// A monster should only move toward the player if they have seen the player
@@ -645,21 +834,59 @@ void movement_update() {
 				mv->chasingPlayer = true;
 				mv->turnsSincePlayerSeen = 0;
 			} else {
-
+				// Player is not visible - see if monster should still chase
+				giveChase = mv->chasingPlayer;
+				mv->turnsSincePlayerSeen += 1;
+				if (mv->turnsSincePlayerSeen > 5) {
+					mv->chasingPlayer = false;
+				}
 			}
 			
 			i32 speedCounter = mv->speed;
+			//printf("speedCounter %d\n",mv->speed);
 			while (speedCounter > 0) {
 				// Determine if we're currently in combat range of the player
-				//if ((fovMap[p->x][p->y] > 0) && (targetMap[p->x][p->y] == 1)) {
-				if ((fovMap[p->x][p->y] > 0)) {
-					// Combat range - so attack the player
-					//combat_attack(&gameObjects[mv->objectId], player);
-
+				if ((fovMap[p->x][p->y] > 0) && (targetMap[p->x][p->y] == 1)) {
+					combat_attack(&gameObjects[mv->objectId], player);
 				} else {
 					// Out of combat range, so determine new position based on our target map
 					if (giveChase) {
+						Position moves[4];
+						i32 moveCount = 0;
+						i32 currTargetValue = targetMap[p->x][p->y];	
 						
+						if (targetMap[p->x - 1][p->y] < currTargetValue) {
+							Position np = newPos;
+							np.x -= 1;	
+							moves[moveCount] = np;					
+							moveCount += 1;
+						}
+
+						if (targetMap[p->x][p->y - 1] < currTargetValue) { 
+							Position np = newPos;
+							np.y -= 1;						
+							moves[moveCount] = np;					
+							moveCount += 1;
+						}
+
+						if (targetMap[p->x + 1][p->y] < currTargetValue) { 
+							Position np = newPos;
+							np.x += 1;						
+							moves[moveCount] = np;					
+							moveCount += 1;
+						}
+						if (targetMap[p->x][p->y + 1] < currTargetValue) { 
+							Position np = newPos;
+							np.y += 1;						
+							moves[moveCount] = np;					
+							moveCount += 1;
+						}
+
+						if (moveCount > 0) {
+							u32 moveIdx = rand() % moveCount;
+							newPos = moves[moveIdx];
+						}
+
 
 					}else {
 						// Move randomly?
@@ -694,16 +921,72 @@ void movement_update() {
 	}
 }
 
+void health_removal_update() 
+{
+	ListElement *e = list_head(healthComps);
+	while (e != NULL) {
+		Health *h = (Health *)list_data(e);
+		if (h->currentHP <= 0) {
+			if (h->ticksUntilRemoval <= 0) {
+				// Remove object and all related components from world state
+				GameObject goToDestroy = gameObjects[h->objectId];
+				e = list_next(e);	// Grab the next element in the list, because we're about to destroy this one
+				game_object_destroy(&goToDestroy);
+			} else {
+				h->ticksUntilRemoval -= 1;
+	 			e = list_next(e);
+			}
+		} else {
+			e = list_next(e);
+		}
+	}
+}
+
+void environment_update(Position *playerPos) 
+{
+    // Check to see if there are any items at player's current position
+	List *objects = game_objects_at_position(playerPos->x, playerPos->y);
+	GameObject *itemObj = NULL;
+	ListElement *e = list_head(objects);
+	while (e != NULL) {
+		GameObject *go = (GameObject *)list_data(e);
+		Equipment *eqComp = (Equipment *)game_object_get_component(go, COMP_EQUIPMENT);
+		if (eqComp != NULL) {
+			itemObj = go;
+		}
+		Treasure *trComp = (Treasure *)game_object_get_component(go, COMP_TREASURE);
+		if (trComp != NULL) {
+			itemObj = go;
+		}
+		
+		Visibility *v = (Visibility *)game_object_get_component(go, COMP_VISIBILITY);
+		if ((v != NULL) && (String_Equals(v->name, (char*)"Stairs"))) {
+			char *msg = String_Create("There are stairs down here. [D]escend?", v->name);
+			add_message(msg, 0xffd700ff);
+			String_Destroy(msg);
+		}
+		e = list_next(e);
+	}
+	if (itemObj != NULL) {
+		Visibility *v = (Visibility *)game_object_get_component(itemObj, COMP_VISIBILITY);
+		if (v != NULL) {
+			char *msg = String_Create("There is a %s here. [G]et it?", v->name);
+			add_message(msg, 0x009900ff);
+			String_Destroy(msg);
+		}
+	}
+}
+
 void game_update()
 {
 	//printf("void game_update() \n");
 	if (playerTookTurn) {
 		Position *playerPos = (Position *)game_object_get_component(player, COMP_POSITION);
-		//generate_target_map(playerPos->x, playerPos->y);
+		generate_target_map(playerPos->x, playerPos->y);
 		movement_update();			
-		//environment_update(playerPos);
+		environment_update(playerPos);
 
-		//health_removal_update();
+		health_removal_update();
 	}
 
 	if (recalculateFOV) {
@@ -734,6 +1017,7 @@ void game_new()
 	game_object_update_component(player, COMP_COMBAT, &com);
 
 	//playerName = name_create();
+	maxWeightAllowed = 20;
 	playerName = (char*)"neo";
 
 	currentLevelNumber = 1;
@@ -744,7 +1028,7 @@ void game_new()
 
 	fov_calculate(playerPos->x, playerPos->y, fovMap);
 
-	//generate_target_map(playerPos->x, playerPos->y);
+	generate_target_map(playerPos->x, playerPos->y);
 }
 
 bool can_move(Position pos) {
@@ -774,3 +1058,194 @@ bool can_move(Position pos) {
 	return moveAllowed;
 }
 
+void add_message(char *msg, u32 color) {
+
+	Message *m = (Message *)malloc(sizeof(Message));
+	if (msg != NULL) {
+		m->msg = (char*)malloc(strlen(msg) + 1);
+		strcpy(m->msg, msg);		
+	} else {
+		m->msg = (char*)"";
+	}
+	m->fgColor = color;
+
+	// Add message to log
+	if (messageLog == NULL) {
+		messageLog = list_new(NULL);
+	}
+	list_insert_after(messageLog, list_tail(messageLog), m);
+
+	// If our log has exceeded 20 messages, cull the older messages
+	if (list_size(messageLog) > 20) {
+		list_remove(messageLog, NULL);  // Remove the oldest message
+	}
+
+}
+
+void health_recover_player_only()
+{
+	Health *h = (Health *)game_object_get_component(player, COMP_HEALTH);
+	if (h->currentHP > 0) {
+		h->currentHP += h->recoveryRate;
+		if (h->currentHP > h->maxHP) { 
+			h->currentHP = h->maxHP;
+		}			
+	}
+}
+
+i32 item_get_weight_carried() {
+	i32 totalWeight = 0;
+	ListElement *e = list_head(carriedItems);
+	while (e != NULL) {
+		GameObject *go = (GameObject *)list_data(e);
+		Equipment *eq = (Equipment *)game_object_get_component(go, COMP_EQUIPMENT);
+		totalWeight += eq->weight;
+		e = list_next(e);
+	}
+	
+	return totalWeight;
+}
+
+void item_drop(GameObject *item) {
+	if (item == NULL) { return; }
+
+	// Determine position of dropped item
+	Position *playerPos = (Position *)game_object_get_component(player, COMP_POSITION);
+
+	// Check to see if the the item can be dropped
+	List *objects = game_objects_at_position(playerPos->x, playerPos->y);
+	bool canBeDropped = true;
+	ListElement *le = list_head(objects);
+	while (le != NULL) {
+		Equipment *eq = (Equipment *)game_object_get_component((GameObject *)le->data, COMP_EQUIPMENT);
+		if (eq != NULL) {
+			canBeDropped = false;
+			break;
+		}
+		le = list_next(le);
+	}
+
+	if (canBeDropped) {
+		// Drop the item by assigning it a position
+		Position pos = {.objectId = item->id, .x = playerPos->x, .y = playerPos->y, .layer = LAYER_MID};
+		game_object_update_component(item, COMP_POSITION, &pos);
+
+		// Unequip the item if equipped
+		Equipment *eq = (Equipment *)game_object_get_component(item, COMP_EQUIPMENT);
+		if (eq->isEquipped) {
+			item_toggle_equip(item);
+		}
+
+		// Remove from carried items
+		list_remove_element_with_data(carriedItems, item);
+
+		// Display a message to the player
+		Visibility *v = (Visibility *)game_object_get_component(item, COMP_VISIBILITY);
+		char *msg = String_Create("You dropped the %s.", v->name);
+		add_message(msg, 0x990000ff);
+		String_Destroy(msg);
+
+	} else {
+		char *msg = String_Create("Can't drop here.");
+		add_message(msg, 0x990000ff);
+		String_Destroy(msg);
+	}
+
+}
+
+void item_get()
+{
+	Position *playerPos = (Position *)game_object_get_component(player, COMP_POSITION);
+	// Get the item at player's current position
+	List *objects = game_objects_at_position(playerPos->x, playerPos->y);
+	GameObject *itemObj = NULL;
+	Equipment *eq = NULL;
+	Treasure *t = NULL;
+	ListElement *e = list_head(objects);
+	while (e != NULL) {
+		GameObject *go = (GameObject *)list_data(e);
+		eq = (Equipment *)game_object_get_component(go, COMP_EQUIPMENT);
+		if (eq != NULL) {
+			itemObj = go;
+			break;
+		}
+		t = (Treasure *)game_object_get_component(go, COMP_TREASURE);
+		if (t != NULL) {
+			itemObj = go;
+			break;
+		}
+		e = list_next(e);
+	}
+	if (itemObj != NULL && t != NULL) {
+	
+	}
+	
+	if (itemObj != NULL && eq != NULL) {
+		// Can the player pick it up (are they carrying too much already?)
+		i32 carriedWeight = item_get_weight_carried();
+		if (carriedWeight + eq->weight <= maxWeightAllowed) {
+			//
+			// Add the item to the player's carried items
+			list_insert_after(carriedItems, NULL, itemObj);
+			// Remove the item from the map (take away its Position comp)
+			game_object_update_component(itemObj, COMP_POSITION, NULL);
+
+			// Write an appropriate message to the log
+			Visibility *v = (Visibility *)game_object_get_component(itemObj, COMP_VISIBILITY);
+			if (v != NULL) {
+				char *msg = String_Create("You picked up the %s.", v->name);
+				add_message(msg, 0x009900ff);
+				String_Destroy(msg);
+			}
+		} else {
+			// Too much to carry
+			char *msg = String_Create("You are carrying too much already.");
+			add_message(msg, 0x990000ff);
+			String_Destroy(msg);
+		}
+	}
+}
+
+void item_toggle_equip(GameObject *item) {
+	if (item == NULL) { return; }
+
+	Equipment *eq = (Equipment *)game_object_get_component(item, COMP_EQUIPMENT);
+	if (eq != NULL) {
+		eq->isEquipped = !eq->isEquipped;
+		Combat *playerCombat = (Combat *)game_object_get_component(player, COMP_COMBAT);
+		Combat *c = (Combat *)game_object_get_component(item, COMP_COMBAT);
+		if (eq->isEquipped) {
+			// Apply the effects of equipping that item
+			playerCombat->toHitModifier += c->toHitModifier;
+			playerCombat->attackModifier += c->attackModifier;
+			playerCombat->defenseModifier += c->defenseModifier;
+			playerCombat->dodgeModifier += c->dodgeModifier;
+			// Loop through all other carried items and unequip any other item that might have already
+			// been equipped in that slot
+			ListElement *le = list_head(carriedItems);
+			while (le != NULL) {
+				if (le->data != item) {
+					Equipment *e = (Equipment *)game_object_get_component((GameObject *)le->data, COMP_EQUIPMENT);
+					//Slot name is the same means only can equip one 
+					if (strcmp(e->slot, eq->slot) == 0 && e->isEquipped) {
+						e->isEquipped = false;
+						Combat *cc = (Combat *)game_object_get_component((GameObject *)le->data, COMP_COMBAT);
+						// Apply the effects of unequipping that item
+						playerCombat->toHitModifier -= cc->toHitModifier;
+						playerCombat->attackModifier -= cc->attackModifier;
+						playerCombat->defenseModifier -= cc->defenseModifier;
+						playerCombat->dodgeModifier -= cc->dodgeModifier;
+					}
+				}
+				le = list_next(le);
+			}
+		}else {
+			// Apply the effects of unequipping that item
+			playerCombat->toHitModifier -= c->toHitModifier;
+			playerCombat->attackModifier -= c->attackModifier;
+			playerCombat->defenseModifier -= c->defenseModifier;
+			playerCombat->dodgeModifier -= c->dodgeModifier;
+		}
+
+	}
+}

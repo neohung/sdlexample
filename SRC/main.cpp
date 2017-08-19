@@ -29,7 +29,6 @@ typedef int64_t		i64;
 #define global_variable static
 #define internal static
 
-bool asciiMode = true;
 //Render the Screen from UIScreen
 internal void render_screen(SDL_Renderer *renderer, SDL_Texture *screenTexture, UIScreen *screen)
 {
@@ -186,6 +185,9 @@ int main(int argc, char* argv[]) {
     //Before running loop, init activeScreen
     ui_set_active_screen(screen_test());
     while (gameIsRunning) {
+        
+        playerTookTurn = false;
+
     	SDL_Event event;
     	u32 timePerFrame = 1000 / FPS_LIMIT;
     	u32 frameStart = 0;

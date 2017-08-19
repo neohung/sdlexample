@@ -633,3 +633,16 @@ void view_draw_ascii_image_at(Console *console, AsciiImage *image, i32 cellX, i3
         }
     }
 }
+
+void console_destroy(Console *con) {
+    if (con->pixels) { free(con->pixels); }
+    if (con->cells) { free(con->cells); }
+    if (con) { free(con); }
+}
+
+void view_destroy(UIView *view) {
+    if (view) {
+        free(view->pixelRect);
+        console_destroy(view->console);
+    }
+}

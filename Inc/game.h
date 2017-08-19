@@ -13,8 +13,8 @@
 //======================================
 
 #define FPS_LIMIT		20
-#define SCREEN_WIDTH	640 //320 //1280
-#define SCREEN_HEIGHT	480 //240 //720
+#define SCREEN_WIDTH	1280 //320 //1280
+#define SCREEN_HEIGHT	720 //240 //720
 #define BG_WIDTH    (SCREEN_WIDTH / 16)
 #define BG_HEIGHT   (SCREEN_HEIGHT / 16)
 
@@ -29,7 +29,15 @@
 //#define MAP_HEIGHT	40
 #define MAP_WIDTH	(SCREEN_WIDTH / 16)
 #define MAP_HEIGHT	((SCREEN_HEIGHT / 16) - 5)
+#define STATS_WIDTH		20//(SCREEN_WIDTH / 16) //20
+#define STATS_HEIGHT 	5
+#define LOG_WIDTH	    ((SCREEN_WIDTH / 16) - 20) //20
+#define LOG_HEIGHT 	5
 
+#define INVENTORY_LEFT		20
+#define INVENTORY_TOP		7
+#define INVENTORY_WIDTH		40
+#define INVENTORY_HEIGHT	30
 
 //=======================================
 
@@ -166,12 +174,17 @@ extern i32 currentLevelNumber;
 extern DungeonLevel *currentLevel;
 
 extern u32 fovMap[MAP_WIDTH][MAP_HEIGHT];
-extern i32 (*targetMap)[MAP_HEIGHT];
+extern i32 **targetMap;
 extern List *goPositions[MAP_WIDTH][MAP_HEIGHT];
 extern char* playerName;
+extern i32 maxWeightAllowed;
+extern List *messageLog;
 
 extern bool playerTookTurn;
 extern bool recalculateFOV;
+extern i32 gemsFoundTotal;
+
+extern bool asciiMode;
 
 void game_update();
 void game_new();
@@ -180,4 +193,11 @@ void *game_object_get_component(GameObject *obj, GameComponentType comp);
 void game_object_update_component(GameObject *obj, GameComponentType comp, void *compData);
 List *game_objects_at_position(u32 x, u32 y);
 bool can_move(Position pos);
+void combat_attack(GameObject *attacker, GameObject *defender);
+void add_message(char *msg, u32 color);
+void health_recover_player_only();
+void item_get();
+i32 item_get_weight_carried();
+void item_toggle_equip(GameObject *item);
+void item_drop(GameObject *item);
 #endif
