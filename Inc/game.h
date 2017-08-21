@@ -200,4 +200,5 @@ void item_get();
 i32 item_get_weight_carried();
 void item_toggle_equip(GameObject *item);
 void item_drop(GameObject *item);
+void level_descend();
 #endif

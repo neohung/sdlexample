@@ -141,8 +141,9 @@ void handle_event_in_game(UIScreen *activeScreen, UIEvent event)
 			}
 			break;
 			case SDLK_x: {
-				free(currentLevel->mapWalls);
-				level_init(1, player);
+				//free(currentLevel->mapWalls);
+				//level_init(1, player);
+				level_descend();
 			}
 			break;
 			case SDLK_LEFT:
@@ -227,10 +228,11 @@ void handle_event_in_game(UIScreen *activeScreen, UIEvent event)
 					}
 				} else {
 					// Descend to the next level
-					//level_descend();
+					level_descend();
 				}
 			}
 			break;
+			case SDLK_SPACE:
 			case SDLK_e: {
 				if (inventoryView != NULL) {
 					ListElement *le = list_item_at(carriedItems, highlightedIdx);

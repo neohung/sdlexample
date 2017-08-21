@@ -445,6 +445,45 @@ Point level_get_open_point(bool **mapCells) {
 	}
 }
 
+void get_appearance_prob(Config *config, i32 (*probabilities)[MAX_DUNGEON_LEVEL]) {
+	ListElement *e = list_head(config->entities);
+	while (e != NULL) {
+		ConfigEntity *entity = (ConfigEntity *)e->data;
+		char *appearance_prob = config_entity_value(entity, (char*)"appearance_prob");
+		char *copy = (char *)malloc(strlen(appearance_prob) + 1);
+		strcpy(copy, appearance_prob);
+
+		char *idString = config_entity_value(entity, (char*)"id");
+		i32 id = atoi(idString);
+
+		char *lvl = strtok(copy, ",");
+		if (lvl != NULL) {
+			i32 lastLvl = 0;
+			bool probData = true;
+			while (probData) {
+				char *prob = strtok(NULL, ",");
+				i32 lvlNum = atoi(lvl);
+				i32 probNum = atoi(prob);	
+
+				// Fill in the probabilities from our last filled level to the current level
+				for (i32 i = lastLvl; i < lvlNum; i++) {
+					probabilities[id-1][i] = probNum;							
+				}				
+
+				lastLvl = lvlNum;
+				lvl = strtok(NULL, ",");
+				if (lvl == NULL) {
+					probData = false;
+				}
+			}
+		}
+
+		free(copy);
+		e = list_next(e);
+	}
+
+}
+
 void get_max_counts(ConfigEntity *entity, char *propertyName, i32 *maxCounts) {
 	char *countsString = config_entity_value(entity, propertyName);
 		char *copy = (char *)malloc(strlen(countsString) + 1);
@@ -475,7 +514,8 @@ void get_max_counts(ConfigEntity *entity, char *propertyName, i32 *maxCounts) {
 Config *levelConfig = NULL;
 Config *monsterConfig = NULL;
 Config *itemConfig = NULL;
-
+i32 monsterProbability[MONSTER_TYPE_COUNT][MAX_DUNGEON_LEVEL];	
+i32 itemProbability[ITEM_TYPE_COUNT][MAX_DUNGEON_LEVEL];
 void world_state_init() {
 	//Init gameObjects[] first
 	for (u32 i = 0; i < MAX_GO; i++) {
@@ -497,6 +537,11 @@ void world_state_init() {
 	monsterConfig = config_file_parse((char*)"monsters.txt");
 	itemConfig = config_file_parse((char*)"items.txt");
 
+	// Generate our monster appearance probability data
+	get_appearance_prob(monsterConfig, monsterProbability);
+	// Do the same for item probabilities
+	get_appearance_prob(itemConfig, itemProbability);
+
 	ListElement *e = list_head(levelConfig->entities);
 	if (e != NULL) {
 		ConfigEntity *levelEntity = (ConfigEntity *)e->data;
@@ -515,7 +560,6 @@ void world_state_init() {
 }
 
 i32 monster_for_level(i32 level) {
-	/*
 	u32 r = rand() % 100;
 	u32 accum = 0;
 	for (int i = 0; i < MONSTER_TYPE_COUNT; i++) {
@@ -524,11 +568,18 @@ i32 monster_for_level(i32 level) {
 			return i + 1;
 		}
 	}
-	*/
 	return 1;
 }
 
 i32 item_for_level(i32 level) {
+	u32 r = rand() % 100;
+	u32 accum = 0;
+	for (int i = 0; i < ITEM_TYPE_COUNT; i++) {
+		accum += itemProbability[i][level-1];
+		if (accum >= r) {
+			return i + 1;
+		}
+	}
 	return 1;
 }
 
@@ -976,6 +1027,20 @@ void environment_update(Position *playerPos)
 		}
 	}
 }
+
+void level_descend() {
+	currentLevelNumber += 1;
+	currentLevel = level_init(currentLevelNumber, player);
+	Position *playerPos = (Position *)game_object_get_component(player, COMP_POSITION);
+	fov_calculate(playerPos->x, playerPos->y, fovMap);
+	generate_target_map(playerPos->x, playerPos->y);
+
+	char *msg = String_Create("You descend further, and are now on level %d.", currentLevelNumber);
+	add_message((char*)"---------------------------------------------------", 0x555555ff);
+	add_message(msg, 0x990000ff);
+	String_Destroy(msg);
+}
+
 
 void game_update()
 {
